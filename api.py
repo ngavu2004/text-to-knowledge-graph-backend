@@ -4,8 +4,10 @@ from typing import List, Dict, Any
 import asyncio
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from graph_functions import extract_kg_from_text
-import os
+from dotenv import load_dotenv
 
+
+load_dotenv()
 app = FastAPI(title="Knowledge Graph API", version="1.0.0")
 
 class TextRequest(BaseModel):
@@ -35,59 +37,27 @@ async def extract_knowledge_graph(request: TextRequest):
     Extract knowledge graph from text by chunking and processing each chunk
     """
     try:
-        # 1. Split text into chunks
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=request.chunk_size,
-            chunk_overlap=request.chunk_overlap
-        )
-        chunks = splitter.split_text(request.text)
+        nodes, relationships = await extract_kg_from_text(request.text)
         
-        if not chunks:
-            raise HTTPException(status_code=400, detail="No text chunks created")
-        
-        # 2. Process each chunk
-        all_nodes = []
-        all_relationships = []
-        
-        for chunk in chunks:
-            try:
-                nodes, relationships = await extract_kg_from_text(chunk)
-                all_nodes.extend(nodes)
-                all_relationships.extend(relationships)
-            except Exception as e:
-                print(f"Error processing chunk: {e}")
-                continue
-        
-        # 3. Deduplicate nodes and relationships
-        unique_nodes = {}
-        for node in all_nodes:
-            key = (node.id, node.type)
-            if key not in unique_nodes:
-                unique_nodes[key] = NodeResponse(
-                    id=node.id,
-                    type=node.type,
-                    properties=getattr(node, 'properties', {})
-                )
-        
-        unique_relationships = {}
-        for rel in all_relationships:
-            key = (rel.source.id, rel.target.id, rel.type)
-            if key not in unique_relationships:
-                unique_relationships[key] = RelationshipResponse(
-                    source=rel.source.id,
-                    target=rel.target.id,
-                    type=rel.type,
-                    properties=getattr(rel, 'properties', {})
-                )
+        # Convert the tuples to dictionaries for the response model
+        node_responses = []
+        for node_id, node_type in nodes:
+            node_responses.append(NodeResponse(id=node_id, type=node_type))
+            
+        relationship_responses = []
+        for source, target, rel_type in relationships:
+            relationship_responses.append(RelationshipResponse(source=source, target=target, type=rel_type))
         
         return KnowledgeGraphResponse(
-            nodes=list(unique_nodes.values()),
-            relationships=list(unique_relationships.values()),
-            chunks_processed=len(chunks)
+            nodes=node_responses,
+            relationships=relationship_responses,
+            chunks_processed=len(request.text.split())  # Approximate chunk count
         )
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing text: {str(e)}")
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error processing knowledge graph: {str(e)}")
 
 @app.get("/health")
 async def health_check():
@@ -95,4 +65,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

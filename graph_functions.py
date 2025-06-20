@@ -4,13 +4,13 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import networkx as nx
 import os
+from dotenv import load_dotenv
 import colorsys
 import tempfile
-import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+load_dotenv()
 llm = ChatOpenAI(temperature=0, model_name="gpt-4-turbo")
 
 llm_transformer = LLMGraphTransformer(llm=llm)
