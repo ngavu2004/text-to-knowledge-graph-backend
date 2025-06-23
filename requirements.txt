@@ -10,3 +10,4 @@ langchain-text-splitters
 networkx
 matplotlib
 streamlit
+pdfplumber

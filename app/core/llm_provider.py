@@ -6,7 +6,7 @@ from app.core.config import settings
 load_dotenv()
 llm = ChatOpenAI(
     temperature=0,
-    model_name="gpt-4-turbo",
+    model_name="gpt-4.1-nano",
     api_key=settings.OPENAI_API_KEY
 )
 llm_transformer = LLMGraphTransformer(llm=llm)
